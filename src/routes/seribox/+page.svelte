@@ -94,7 +94,7 @@
 </svelte:head>
 
 <div class="converter-container">
-	<h1>EXCEL CONVERTER</h1>
+	<h1>SeriBox (TW) - EXCEL CONVERTER</h1>
 
 	<DropZone onFileSelect={handleFile} accept=".xlsx" dragText="엑셀 파일을 드래그하거나 클릭하여 업로드" />
 

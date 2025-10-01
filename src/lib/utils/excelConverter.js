@@ -15,56 +15,35 @@ export function excelColumnToIndex(col) {
 /**
  * 엑셀 데이터를 맵핑 정보에 따라 변환
  * @param {Array<Array>} sourceData - 원본 데이터 (2차원 배열)
- * @param {Array<Array>} mappingData - 맵핑 정보 (2차원 배열)
+ * @param {Array<Object>} mappingConfig - 맵핑 설정 객체 배열
  * @returns {Array<Array>} 변환된 데이터
  */
-export function convertData(sourceData, mappingData) {
-	if (sourceData.length === 0 || mappingData.length === 0) {
+export function convertData(sourceData, mappingConfig) {
+	if (sourceData.length === 0) {
 		throw new Error('데이터가 비어있습니다.');
 	}
 
+	if (!mappingConfig || mappingConfig.length === 0) {
+		throw new Error('맵핑 설정이 없습니다.');
+	}
+
 	const sourceHeaders = sourceData[0];
-	const mappings = parseMappings(mappingData);
 	const result = [];
 
 	// 헤더 생성
-	const resultHeaders = mappings.map((m) => m.targetColumn).filter((h) => h);
+	const resultHeaders = mappingConfig.map((m) => m.targetColumn).filter((h) => h);
 	result.push(resultHeaders);
 
 	// 데이터 행 변환
 	for (let i = 1; i < sourceData.length; i++) {
 		const sourceRow = sourceData[i];
-		const resultRow = processRow(sourceRow, mappings, sourceHeaders);
+		const resultRow = processRow(sourceRow, mappingConfig, sourceHeaders);
 		result.push(resultRow);
 	}
 
 	return result;
 }
 
-/**
- * 맵핑 데이터를 파싱하여 맵핑 객체 배열로 변환
- * @param {Array<Array>} mappingData - 맵핑 정보 (2차원 배열)
- * @returns {Array<Object>} 맵핑 객체 배열
- */
-function parseMappings(mappingData) {
-	const mappings = [];
-
-	for (let i = 1; i < mappingData.length; i++) {
-		const row = mappingData[i];
-		if (row.length < 6) continue;
-
-		const mapping = {
-			targetColumn: row[2] || '', // 스마트십 업로드 칼럼
-			sourceColumn: row[3] || '', // 원본칼럼2
-			sourceColumnIndex: row[4] || '', // 원본열번호
-			fixedValue: row[5] || '' // 고정값
-		};
-
-		mappings.push(mapping);
-	}
-
-	return mappings;
-}
 
 /**
  * 단일 행을 처리하여 변환된 행 반환

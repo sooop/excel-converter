@@ -3,6 +3,7 @@
 	import StatusMessage from '$lib/components/StatusMessage.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { convertData, downloadExcelFile } from '$lib/utils/excelConverter.js';
+	import { smartshipMapping } from '$lib/config/smartshipMapping.js';
 
 	let status = $state({ message: '', type: '' });
 	let progress = $state(0);
@@ -31,21 +32,10 @@
 
 				updateProgress(70);
 
-				if (workbook.SheetNames.length < 2) {
-					setStatus('error', '두 번째 시트(맵핑 정보)가 없습니다.');
-					hideProgress();
-					return;
-				}
-
+				// 첫 번째 시트만 읽기
 				const dataSheet = workbook.Sheets[workbook.SheetNames[0]];
-				const mappingSheet = workbook.Sheets[workbook.SheetNames[1]];
 
 				const sourceData = XLSX.utils.sheet_to_json(dataSheet, {
-					header: 1,
-					defval: '',
-					raw: false
-				});
-				const mappingData = XLSX.utils.sheet_to_json(mappingSheet, {
 					header: 1,
 					defval: '',
 					raw: false
@@ -53,7 +43,8 @@
 
 				updateProgress(80);
 
-				const convertedData = convertData(sourceData, mappingData);
+				// 내부 맵핑 설정 사용
+				const convertedData = convertData(sourceData, smartshipMapping);
 
 				updateProgress(90);
 

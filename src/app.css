@@ -13,6 +13,167 @@ body {
 	color: #333;
 }
 
+/* Navigation */
+.nav {
+	background: white;
+	border-bottom: 1px solid #e0e0e0;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+}
+
+.nav-container {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 0 40px;
+	height: 60px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.nav-logo {
+	font-size: 16px;
+	font-weight: 400;
+	letter-spacing: 1px;
+	color: #222;
+	text-decoration: none;
+	transition: opacity 0.2s ease;
+}
+
+.nav-logo:hover {
+	opacity: 0.6;
+}
+
+.nav-links {
+	display: flex;
+	gap: 30px;
+}
+
+.nav-link {
+	font-size: 14px;
+	color: #666;
+	text-decoration: none;
+	transition: color 0.2s ease;
+	position: relative;
+}
+
+.nav-link:hover {
+	color: #222;
+}
+
+.nav-link.active {
+	color: #222;
+}
+
+.nav-link.active::after {
+	content: '';
+	position: absolute;
+	bottom: -20px;
+	left: 0;
+	right: 0;
+	height: 2px;
+	background: #222;
+}
+
+/* Home Page */
+.home-container {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 80px 40px;
+	min-height: calc(100vh - 60px);
+}
+
+.home-header {
+	text-align: center;
+	margin-bottom: 60px;
+}
+
+.home-header h1 {
+	font-size: 32px;
+	font-weight: 400;
+	letter-spacing: 2px;
+	margin-bottom: 16px;
+	color: #222;
+}
+
+.home-header p {
+	font-size: 14px;
+	color: #666;
+	letter-spacing: 0.5px;
+}
+
+.converter-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 24px;
+	margin-bottom: 80px;
+}
+
+.converter-card {
+	background: white;
+	border: 1px solid #e0e0e0;
+	border-radius: 2px;
+	padding: 40px 30px;
+	text-decoration: none;
+	color: inherit;
+	transition: all 0.2s ease;
+	display: flex;
+	flex-direction: column;
+	cursor: pointer;
+}
+
+.converter-card:not(.disabled):hover {
+	border-color: #999;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	transform: translateY(-2px);
+}
+
+.converter-card.disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.converter-card-icon {
+	font-size: 48px;
+	margin-bottom: 20px;
+}
+
+.converter-card-title {
+	font-size: 16px;
+	font-weight: 400;
+	letter-spacing: 0.5px;
+	margin-bottom: 12px;
+	color: #222;
+}
+
+.converter-card-description {
+	font-size: 13px;
+	color: #666;
+	line-height: 1.6;
+	margin-bottom: 20px;
+	flex-grow: 1;
+}
+
+.converter-card-status {
+	font-size: 11px;
+	color: #999;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+}
+
+.home-footer {
+	text-align: center;
+	padding-top: 40px;
+	border-top: 1px solid #e0e0e0;
+}
+
+.home-footer p {
+	font-size: 11px;
+	color: #999;
+	letter-spacing: 0.5px;
+}
+
 .converter-container {
 	background: white;
 	border-radius: 2px;

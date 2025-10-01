@@ -70,7 +70,14 @@ export const smartshipMapping = [
 		sourceColumnIndex: 'AS',
 		fixedValue: ''
 	},
-	{ targetColumn: '상품 수(O06)', sourceColumn: '수량', sourceColumnIndex: 'V', fixedValue: '' },
+	{ targetColumn: '상품 수(O06)', sourceColumn: '수량', sourceColumnIndex: 'V', fixedValue: '' , transform: (set_qty, row, header, ctx) => {
+		// parsedItems가 없으면 원본 값 그대로 반환
+		if (!ctx.parsedItems || !Array.isArray(ctx.parsedItems)) {
+			return set_qty;
+		}
+		const qty = parseInt(set_qty) || 1;
+		return ctx.parsedItems.map(i => i.qty * qty);
+	}},
 	{ targetColumn: '상품 가격(총액)(O07)', sourceColumn: '합계', sourceColumnIndex: 'AZ', fixedValue: '' },
 	{ targetColumn: '고객이름(O08)', sourceColumn: '수취인명', sourceColumnIndex: 'Z', fixedValue: '' },
 	{ targetColumn: '우편 번호(O09)', sourceColumn: '우편번호', sourceColumnIndex: 'AB', fixedValue: '' },
@@ -102,8 +109,31 @@ export const smartshipMapping = [
 	{
 		targetColumn: '사용자 정의 상품 코드(O25)',
 		sourceColumn: 'SKU',
-		sourceColumnIndex: 'AQ',
-		fixedValue: ''
+		sourceColumnIndex: 'U',
+		fixedValue: '',
+		transform: (info, row, header, ctx) => {
+			// 빈 값 처리
+			if (!info || info.trim() === '') {
+				ctx.parsedItems = null;
+				return info;
+			}
+
+			// 구분자 확인 및 파싱
+			const items = info.split(',').map(item => {
+				const match = item.trim().match(/(\S+)\s*x\s*(\d+)/);
+				if (match) return { seller_sku_code: match[1], qty: parseInt(match[2])};
+				return null;
+			}).filter(Boolean); // null 제거
+
+			// 파싱된 항목이 없으면 원본 값 그대로 사용
+			if (items.length === 0) {
+				ctx.parsedItems = null;
+				return info;
+			}
+
+			ctx.parsedItems = items;
+			return items.map(i => i.seller_sku_code);
+		}
 	},
 	{ targetColumn: 'COD 서비스 사용(O26)', sourceColumn: '', sourceColumnIndex: '', fixedValue: '' },
 	{ targetColumn: 'COD 금액(O27)', sourceColumn: '', sourceColumnIndex: '', fixedValue: '' },

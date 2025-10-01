@@ -11,21 +11,21 @@
 	<div class="converter-grid">
 		<a href="/seribox" class="converter-card">
 			<div class="converter-card-icon">📊</div>
-			<h2 class="converter-card-title">Smartship Converter</h2>
+			<h2 class="converter-card-title">SeriBox(TW)</h2>
 			<p class="converter-card-description">
 				엑셀 파일을 스마트십 업로드 형식으로 변환합니다
 			</p>
 			<div class="converter-card-status">사용 가능</div>
 		</a>
 
-		<div class="converter-card disabled">
-			<div class="converter-card-icon">📦</div>
-			<h2 class="converter-card-title">Product Converter</h2>
+		<a href="/test" class="converter-card">
+			<div class="converter-card-icon">🧪</div>
+			<h2 class="converter-card-title">Test Converter</h2>
 			<p class="converter-card-description">
-				상품 데이터를 표준 형식으로 변환합니다
+				테스트용 엑셀 변환 도구입니다
 			</p>
-			<div class="converter-card-status">준비 중</div>
-		</div>
+			<div class="converter-card-status">사용 가능</div>
+		</a>
 
 		<div class="converter-card disabled">
 			<div class="converter-card-icon">📋</div>

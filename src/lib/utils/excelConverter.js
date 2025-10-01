@@ -27,18 +27,22 @@ export function convertData(sourceData, mappingConfig) {
 		throw new Error('맵핑 설정이 없습니다.');
 	}
 
+	// targetColumn이 있는 항목만 필터링
+	const validMappings = mappingConfig.filter((m) => m.targetColumn);
+
 	const sourceHeaders = sourceData[0];
 	const result = [];
 
 	// 헤더 생성
-	const resultHeaders = mappingConfig.map((m) => m.targetColumn).filter((h) => h);
+	const resultHeaders = validMappings.map((m) => m.targetColumn);
 	result.push(resultHeaders);
 
 	// 데이터 행 변환
 	for (let i = 1; i < sourceData.length; i++) {
 		const sourceRow = sourceData[i];
-		const resultRow = processRow(sourceRow, mappingConfig, sourceHeaders);
-		result.push(resultRow);
+		const resultRows = processRow(sourceRow, validMappings, sourceHeaders);
+		// 행 분리 지원: processRow가 여러 행을 반환할 수 있음
+		result.push(...resultRows);
 	}
 
 	return result;
@@ -46,25 +50,62 @@ export function convertData(sourceData, mappingConfig) {
 
 
 /**
- * 단일 행을 처리하여 변환된 행 반환
+ * 단일 행을 처리하여 변환된 행 반환 (행 분리 시 여러 행 반환 가능)
  * @param {Array} sourceRow - 원본 데이터 행
  * @param {Array<Object>} mappings - 맵핑 객체 배열
  * @param {Array} sourceHeaders - 원본 데이터 헤더
- * @returns {Array} 변환된 행
+ * @returns {Array<Array>} 변환된 행들 (보통 1개, 행 분리 시 여러 개)
  */
 function processRow(sourceRow, mappings, sourceHeaders) {
-	const resultRow = [];
-
-	// 전화번호 값 미리 가져오기 (통관정보에 사용)
 	const phoneNumber = getPhoneNumber(sourceRow);
+	const context = {}; // transform 함수 간 데이터 공유를 위한 context 객체
 
-	for (const mapping of mappings) {
+	// 1단계: 각 컬럼의 값 계산 (transform 적용)
+	const columnValues = [];
+	let maxSplitCount = 1; // 최대 분리 행 수
+	let splitColumnIndex = -1; // 분리가 발생한 컬럼 인덱스
+
+	for (let i = 0; i < mappings.length; i++) {
+		const mapping = mappings[i];
 		let value = getValue(sourceRow, mapping, sourceHeaders);
+
+		// transform 함수 적용 (context 전달)
+		if (mapping.transform && typeof mapping.transform === 'function') {
+			value = mapping.transform(value, sourceRow, sourceHeaders, context);
+		}
+
+		// 특수 규칙 적용
 		value = applySpecialRules(value, mapping, phoneNumber);
-		resultRow.push(value);
+
+		// 배열인 경우 행 분리 처리
+		if (Array.isArray(value)) {
+			if (value.length > maxSplitCount) {
+				maxSplitCount = value.length;
+				splitColumnIndex = i;
+			}
+		}
+
+		columnValues.push(value);
 	}
 
-	return resultRow;
+	// 2단계: 행 분리가 필요한 경우 여러 행 생성
+	const resultRows = [];
+	for (let rowIndex = 0; rowIndex < maxSplitCount; rowIndex++) {
+		const resultRow = [];
+		for (let colIndex = 0; colIndex < columnValues.length; colIndex++) {
+			const value = columnValues[colIndex];
+			if (Array.isArray(value)) {
+				// 배열인 경우: 해당 인덱스 값 사용, 없으면 빈 문자열
+				resultRow.push(value[rowIndex] !== undefined ? value[rowIndex] : '');
+			} else {
+				// 일반 값인 경우: 모든 행에 동일하게 사용
+				resultRow.push(value);
+			}
+		}
+		resultRows.push(resultRow);
+	}
+
+	return resultRows;
 }
 
 /**

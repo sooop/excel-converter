@@ -18,6 +18,15 @@
 			<div class="converter-card-status">사용 가능</div>
 		</a>
 
+		<a href="/builder" class="converter-card">
+			<div class="converter-card-icon">🔧</div>
+			<h2 class="converter-card-title">Mapping Builder</h2>
+			<p class="converter-card-description">
+				엑셀 변환 매핑 설정을 쉽게 생성합니다
+			</p>
+			<div class="converter-card-status">사용 가능</div>
+		</a>
+
 		<a href="/test" class="converter-card">
 			<div class="converter-card-icon">🧪</div>
 			<h2 class="converter-card-title">Test Converter</h2>

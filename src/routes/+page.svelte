@@ -18,6 +18,24 @@
 			<div class="converter-card-status">사용 가능</div>
 		</a>
 
+		<a href="/aliexpress" class="converter-card">
+			<div class="converter-card-icon">🛒</div>
+			<h2 class="converter-card-title">AliExpress</h2>
+			<p class="converter-card-description">
+				알리익스프레스 주문 데이터를 스마트십 형식으로 변환합니다
+			</p>
+			<div class="converter-card-status">사용 가능</div>
+		</a>
+
+		<a href="/custom" class="converter-card">
+			<div class="converter-card-icon">⚙️</div>
+			<h2 class="converter-card-title">사용자 정의 변환기</h2>
+			<p class="converter-card-description">
+				저장한 커스텀 매핑으로 엑셀 파일을 변환합니다
+			</p>
+			<div class="converter-card-status">사용 가능</div>
+		</a>
+
 		<a href="/builder" class="converter-card">
 			<div class="converter-card-icon">🔧</div>
 			<h2 class="converter-card-title">Mapping Builder</h2>

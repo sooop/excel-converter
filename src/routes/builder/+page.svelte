@@ -2,12 +2,9 @@
 	import * as XLSX from 'xlsx';
 	import { smartshipMapping } from '$lib/config/smartshipMapping.js';
 
-	let sampleFile = null;
-	let sampleHeaders = [];
-	let mappings = [];
-	let availableMappings = [];
-	let usedSourceColumns = new Set();
-	let draggedIndex = null;
+	let sampleFile = $state(null);
+	let sampleHeaders = $state([]);
+	let draggedIndex = $state(null);
 
 	// Active target columns by default
 	const activeColumns = new Set([
@@ -16,26 +13,24 @@
 	]);
 
 	// Initialize mappings from smartshipMapping
-	$: if (mappings.length === 0 && availableMappings.length === 0) {
-		const all = smartshipMapping.map((m, idx) => {
-			// Extract column code (e.g., "O02" from "출발 국가(O02)")
-			const match = m.targetColumn.match(/\(([^)]+)\)/);
-			const columnCode = match ? match[1] : '';
+	const allMappings = smartshipMapping.map((m, idx) => {
+		// Extract column code (e.g., "O02" from "출발 국가(O02)")
+		const match = m.targetColumn.match(/\(([^)]+)\)/);
+		const columnCode = match ? match[1] : '';
 
-			return {
-				id: idx,
-				enabled: activeColumns.has(columnCode),
-				targetColumn: m.targetColumn,
-				sourceColumn: '',
-				sourceColumnIndex: '',
-				fixedValue: '',
-				transform: ''
-			};
-		});
+		return {
+			id: idx,
+			enabled: activeColumns.has(columnCode),
+			targetColumn: m.targetColumn,
+			sourceColumn: '',
+			sourceColumnIndex: '',
+			fixedValue: '',
+			transform: ''
+		};
+	});
 
-		mappings = all.filter((m) => m.enabled);
-		availableMappings = all.filter((m) => !m.enabled);
-	}
+	let mappings = $state(allMappings.filter((m) => m.enabled));
+	let availableMappings = $state(allMappings.filter((m) => !m.enabled));
 
 	// Handle sample file upload
 	async function handleFileUpload(event) {
@@ -116,11 +111,11 @@
 	}
 
 	// Update used source columns
-	$: {
-		usedSourceColumns = new Set(
+	let usedSourceColumns = $derived(
+		new Set(
 			mappings.filter((m) => m.enabled && m.sourceColumn).map((m) => m.sourceColumn)
-		);
-	}
+		)
+	);
 
 	// Handle source column selection
 	function handleSourceColumnChange(mapping, value) {
@@ -138,7 +133,7 @@
 	}
 
 	// Generate module code
-	$: generatedCode = (() => {
+	let generatedCode = $derived.by(() => {
 		const mappingCode = mappings
 			.map((m) => {
 				let obj = `\t{\n\t\ttargetColumn: '${m.targetColumn}'`;
@@ -154,7 +149,7 @@
 			.join(',\n');
 
 		return `export const customMapping = [\n${mappingCode}\n];\n`;
-	})();
+	});
 
 	// Download generated code
 	function downloadCode() {
@@ -174,9 +169,9 @@
 	}
 
 	// Transform editor state
-	let editingTransform = null;
-	let transformCode = '';
-	let transformError = '';
+	let editingTransform = $state(null);
+	let transformCode = $state('');
+	let transformError = $state('');
 
 	function openTransformEditor(mapping) {
 		editingTransform = mapping;
@@ -225,6 +220,140 @@
 			});
 		}
 	}
+
+	// ============ LocalStorage 매핑 관리 ============
+	const STORAGE_PREFIX = 'excel-mapping-';
+
+	let savedMappings = $state([]);
+	let showSaveModal = $state(false);
+	let saveMappingName = $state('');
+	let saveError = $state('');
+
+	// 저장된 매핑 목록 불러오기
+	function loadSavedMappings() {
+		if (typeof localStorage === 'undefined') return;
+		const saved = [];
+		for (let i = 0; i < localStorage.length; i++) {
+			const key = localStorage.key(i);
+			if (key?.startsWith(STORAGE_PREFIX)) {
+				try {
+					const data = JSON.parse(localStorage.getItem(key) || '');
+					saved.push({ ...data, storageKey: key });
+				} catch (e) {
+					console.error('Failed to load mapping:', key, e);
+				}
+			}
+		}
+		savedMappings = saved.sort((a, b) => b.createdAt - a.createdAt);
+	}
+
+	// 매핑 저장
+	function saveMapping() {
+		saveError = '';
+		const name = saveMappingName.trim();
+		if (!name) {
+			saveError = '매핑 이름을 입력하세요.';
+			return;
+		}
+
+		// Transform이 있는 매핑 필터링
+		const mappingsToSave = mappings.filter((m) => !m.transform || !m.transform.trim());
+		const hasTransform = mappings.some((m) => m.transform && m.transform.trim());
+
+		if (mappingsToSave.length === 0) {
+			saveError = '저장할 매핑이 없습니다.';
+			return;
+		}
+
+		const mappingData = {
+			name,
+			createdAt: Date.now(),
+			columnCount: mappingsToSave.length,
+			mappings: mappingsToSave.map((m) => ({
+				targetColumn: m.targetColumn,
+				sourceColumn: m.sourceColumn,
+				sourceColumnIndex: m.sourceColumnIndex,
+				fixedValue: m.fixedValue
+			}))
+		};
+
+		try {
+			const key = STORAGE_PREFIX + name.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+			localStorage.setItem(key, JSON.stringify(mappingData));
+			loadSavedMappings();
+			closeSaveModal();
+
+			if (hasTransform) {
+				alert(
+					`저장 완료!\n\n⚠️ Transform 함수가 있는 ${mappings.length - mappingsToSave.length}개 컬럼은 제외되었습니다.\nTransform 함수가 필요한 경우 "코드 다운로드"를 사용하세요.`
+				);
+			} else {
+				alert('저장 완료!');
+			}
+		} catch (e) {
+			saveError = '저장 중 오류가 발생했습니다: ' + e.message;
+		}
+	}
+
+	// 매핑 불러오기
+	function loadMapping(savedMapping) {
+		if (!confirm(`"${savedMapping.name}" 매핑을 불러오시겠습니까?\n\n현재 작업 중인 매핑은 사라집니다.`)) {
+			return;
+		}
+
+		// 기존 매핑 초기화
+		mappings = [];
+		availableMappings = [];
+
+		// 저장된 매핑 복원
+		const loadedMappings = savedMapping.mappings.map((m, idx) => ({
+			id: idx + 1000, // 충돌 방지
+			enabled: true,
+			targetColumn: m.targetColumn,
+			sourceColumn: m.sourceColumn,
+			sourceColumnIndex: m.sourceColumnIndex,
+			fixedValue: m.fixedValue,
+			transform: ''
+		}));
+
+		mappings = loadedMappings;
+		alert('매핑을 불러왔습니다!');
+	}
+
+	// 매핑 삭제
+	function deleteMapping(savedMapping) {
+		if (!confirm(`"${savedMapping.name}" 매핑을 삭제하시겠습니까?`)) {
+			return;
+		}
+
+		try {
+			localStorage.removeItem(savedMapping.storageKey);
+			loadSavedMappings();
+			alert('삭제되었습니다.');
+		} catch (e) {
+			alert('삭제 중 오류가 발생했습니다: ' + e.message);
+		}
+	}
+
+	// 저장 모달 열기/닫기
+	function openSaveModal() {
+		showSaveModal = true;
+		saveMappingName = '';
+		saveError = '';
+	}
+
+	function closeSaveModal() {
+		showSaveModal = false;
+		saveMappingName = '';
+		saveError = '';
+	}
+
+	// 초기 로드
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			loadSavedMappings();
+		}
+	});
 </script>
 
 <svelte:head>
@@ -236,6 +365,38 @@
 		<h1>MAPPING BUILDER</h1>
 		<p>엑셀 변환 매핑 설정을 쉽게 생성하세요</p>
 	</div>
+
+	<!-- Saved Mappings -->
+	{#if savedMappings.length > 0}
+		<div class="builder-section">
+			<h2 class="section-title">저장된 매핑</h2>
+			<div class="saved-mappings-grid">
+				{#each savedMappings as savedMapping}
+					<div class="saved-mapping-card">
+						<div class="card-header">
+							<h3 class="card-title">{savedMapping.name}</h3>
+							<button class="btn-delete" on:click={() => deleteMapping(savedMapping)}>×</button>
+						</div>
+						<div class="card-body">
+							<div class="card-info">
+								<span class="info-label">컬럼 수:</span>
+								<span class="info-value">{savedMapping.columnCount}</span>
+							</div>
+							<div class="card-info">
+								<span class="info-label">생성일:</span>
+								<span class="info-value">{new Date(savedMapping.createdAt).toLocaleDateString()}</span>
+							</div>
+						</div>
+						<div class="card-footer">
+							<button class="btn-minimal" on:click={() => loadMapping(savedMapping)}>
+								불러오기
+							</button>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<!-- Sample File Upload -->
 	<div class="builder-section">
@@ -374,6 +535,7 @@
 	<div class="builder-section">
 		<h2 class="section-title">3. 코드 생성</h2>
 		<div class="output-actions">
+			<button class="btn-minimal" on:click={openSaveModal}>저장</button>
 			<button class="btn-minimal" on:click={downloadCode}>다운로드</button>
 			<button class="btn-minimal" on:click={copyCode}>복사</button>
 		</div>
@@ -413,6 +575,41 @@
 			<div class="modal-footer">
 				<button class="btn-minimal" on:click={closeTransformEditor}>취소</button>
 				<button class="btn-minimal primary" on:click={saveTransform}>저장</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Save Mapping Modal -->
+{#if showSaveModal}
+	<div class="modal-overlay" on:click={closeSaveModal}>
+		<div class="modal-content small" on:click={(e) => e.stopPropagation()}>
+			<div class="modal-header">
+				<h3>매핑 저장</h3>
+				<button class="btn-close" on:click={closeSaveModal}>×</button>
+			</div>
+
+			<div class="modal-body">
+				<p class="help-text">매핑 이름을 입력하세요</p>
+				<input
+					type="text"
+					class="input-minimal"
+					bind:value={saveMappingName}
+					placeholder="예: My Custom Mapping"
+					on:keydown={(e) => e.key === 'Enter' && saveMapping()}
+				/>
+				{#if saveError}
+					<div class="status error">{saveError}</div>
+				{/if}
+				<p class="help-text small">
+					⚠️ Transform 함수가 있는 컬럼은 저장되지 않습니다.<br />
+					Transform이 필요한 경우 "코드 다운로드"를 사용하세요.
+				</p>
+			</div>
+
+			<div class="modal-footer">
+				<button class="btn-minimal" on:click={closeSaveModal}>취소</button>
+				<button class="btn-minimal primary" on:click={saveMapping}>저장</button>
 			</div>
 		</div>
 	</div>
@@ -778,5 +975,128 @@
 		gap: 12px;
 		padding: 20px 30px 30px;
 		border-top: 1px solid #e0e0e0;
+	}
+
+	.modal-content.small {
+		max-width: 500px;
+	}
+
+	/* Saved Mappings */
+	.saved-mappings-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		gap: 20px;
+	}
+
+	.saved-mapping-card {
+		border: 1px solid #e0e0e0;
+		border-radius: 2px;
+		background: white;
+		overflow: hidden;
+		transition: all 0.2s ease;
+	}
+
+	.saved-mapping-card:hover {
+		border-color: #999;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.card-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		padding: 20px 20px 12px;
+		border-bottom: 1px solid #f0f0f0;
+	}
+
+	.card-title {
+		font-size: 14px;
+		font-weight: 400;
+		color: #222;
+		letter-spacing: 0.3px;
+		margin: 0;
+		flex: 1;
+	}
+
+	.btn-delete {
+		background: none;
+		border: none;
+		color: #ccc;
+		font-size: 24px;
+		cursor: pointer;
+		line-height: 1;
+		padding: 0;
+		width: 24px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: color 0.2s ease;
+		flex-shrink: 0;
+		margin-left: 12px;
+	}
+
+	.btn-delete:hover {
+		color: #c62828;
+	}
+
+	.card-body {
+		padding: 12px 20px;
+	}
+
+	.card-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 8px;
+		font-size: 12px;
+	}
+
+	.card-info:last-child {
+		margin-bottom: 0;
+	}
+
+	.info-label {
+		color: #999;
+	}
+
+	.info-value {
+		color: #333;
+	}
+
+	.card-footer {
+		padding: 12px 20px 20px;
+	}
+
+	.card-footer .btn-minimal {
+		width: 100%;
+		text-align: center;
+	}
+
+	/* Status Messages */
+	.status {
+		padding: 12px 16px;
+		border-radius: 2px;
+		font-size: 12px;
+		margin-top: 16px;
+	}
+
+	.status.success {
+		background: #e8f5e9;
+		color: #2e7d32;
+		border: 1px solid #a5d6a7;
+	}
+
+	.status.error {
+		background: #ffebee;
+		color: #c62828;
+		border: 1px solid #ef9a9a;
+	}
+
+	.help-text.small {
+		font-size: 11px;
+		color: #999;
+		margin-top: 12px;
+		margin-bottom: 0;
 	}
 </style>

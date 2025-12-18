@@ -26,19 +26,23 @@
 		reader.onload = async (e) => {
 			try {
 				updateProgress(50);
-				const XLSX = await import('xlsx');
-				const data = new Uint8Array(e.target.result);
-				const workbook = XLSX.read(data, { type: 'array' });
+				const ExcelJS = await import('exceljs');
+				const arrayBuffer = e.target.result;
+				const workbook = new ExcelJS.Workbook();
+				await workbook.xlsx.load(arrayBuffer);
 
 				updateProgress(70);
 
 				// 첫 번째 시트만 읽기
-				const dataSheet = workbook.Sheets[workbook.SheetNames[0]];
+				const worksheet = workbook.worksheets[0];
 
-				const sourceData = XLSX.utils.sheet_to_json(dataSheet, {
-					header: 1,
-					defval: '',
-					raw: false
+				const sourceData = [];
+				worksheet.eachRow((row, rowNumber) => {
+					const rowData = [];
+					row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+						rowData.push(cell.value !== null && cell.value !== undefined ? String(cell.value) : '');
+					});
+					sourceData.push(rowData);
 				});
 
 				updateProgress(80);
@@ -48,7 +52,7 @@
 
 				updateProgress(90);
 
-				downloadExcelFile(XLSX, convertedData, file.name);
+				await downloadExcelFile(ExcelJS, convertedData, file.name);
 
 				updateProgress(100);
 				setStatus('success', '변환 완료! 파일이 자동으로 다운로드됩니다.');

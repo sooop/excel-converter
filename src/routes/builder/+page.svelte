@@ -1,5 +1,5 @@
 <script>
-	import * as XLSX from 'xlsx';
+	import * as ExcelJS from 'exceljs';
 	import { smartshipMapping } from '$lib/config/smartshipMapping.js';
 
 	let sampleFile = $state(null);
@@ -32,6 +32,16 @@
 	let mappings = $state(allMappings.filter((m) => m.enabled));
 	let availableMappings = $state(allMappings.filter((m) => !m.enabled));
 
+	// Helper function to convert column index to Excel column letter
+	function numberToColumn(num) {
+		let column = '';
+		while (num >= 0) {
+			column = String.fromCharCode((num % 26) + 65) + column;
+			num = Math.floor(num / 26) - 1;
+		}
+		return column;
+	}
+
 	// Handle sample file upload
 	async function handleFileUpload(event) {
 		const file = event.target.files?.[0];
@@ -39,14 +49,24 @@
 
 		sampleFile = file;
 		const arrayBuffer = await file.arrayBuffer();
-		const workbook = XLSX.read(arrayBuffer);
-		const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-		const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+		const workbook = new ExcelJS.Workbook();
+		await workbook.xlsx.load(arrayBuffer);
+
+		const worksheet = workbook.worksheets[0];
+		const data = [];
+
+		worksheet.eachRow((row, rowNumber) => {
+			const rowData = [];
+			row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+				rowData.push(cell.value);
+			});
+			data.push(rowData);
+		});
 
 		if (data.length > 0) {
 			sampleHeaders = data[0].map((h, idx) => ({
 				name: h || `Column ${idx + 1}`,
-				index: XLSX.utils.encode_col(idx)
+				index: numberToColumn(idx)
 			}));
 		}
 	}

@@ -180,19 +180,29 @@ function applySpecialRules(value, mapping, phoneNumber) {
 
 /**
  * 변환된 데이터를 Excel 파일로 다운로드
- * @param {Object} XLSX - XLSX 라이브러리 객체
+ * @param {Object} ExcelJS - ExcelJS 라이브러리 객체
  * @param {Array<Array>} data - 변환된 데이터
  * @param {string} originalFileName - 원본 파일명
  */
-export function downloadExcelFile(XLSX, data, originalFileName) {
-	const wb = XLSX.utils.book_new();
-	const ws = XLSX.utils.aoa_to_sheet(data);
+export async function downloadExcelFile(ExcelJS, data, originalFileName) {
+	const workbook = new ExcelJS.Workbook();
+	const worksheet = workbook.addWorksheet('Converted');
 
-	XLSX.utils.book_append_sheet(wb, ws, 'Converted');
+	// 데이터 추가
+	worksheet.addRows(data);
 
+	// 파일명 생성
 	const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
 	const baseName = originalFileName.replace('.xlsx', '');
 	const newFileName = `SmartshipExcel_${baseName}_${timestamp}.xlsx`;
 
-	XLSX.writeFile(wb, newFileName);
+	// 브라우저에서 파일 다운로드
+	const buffer = await workbook.xlsx.writeBuffer();
+	const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = newFileName;
+	link.click();
+	URL.revokeObjectURL(url);
 }
